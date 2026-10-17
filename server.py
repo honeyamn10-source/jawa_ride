@@ -87,6 +87,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.api('GET')
         path=self.path.split('?')[0]
         assets={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/javascript'),'/style.css':('style.css','text/css')}
+        for weight in (400,500,600,700,800):
+            name=f'inter-latin-{weight}-normal.woff2'
+            assets['/assets/'+name]=('assets/'+name,'font/woff2')
         if path not in assets: return self.reply({'error':'Not found'},404)
         filename,mime=assets[path]; raw=(ROOT/'public'/filename).read_bytes()
         self.send_response(200); self.send_header('Content-Type',mime)

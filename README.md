@@ -4,6 +4,8 @@ Cash ride marketplace with customer and driver accounts, a responsive website, a
 
 [View app screenshots](docs/screenshots/README.md).
 
+The responsive interface includes dedicated Ride, Activity and Account screens, mobile bottom navigation, trip progress, driver offer cards, and cash summaries based on the driver’s loaded trip history. Fonts are served locally; the bundled Inter font license is in `public/assets/INTER-LICENSE.txt`. City artwork is decorative and explicitly labelled as an illustration.
+
 ## Run locally
 
 Requires Python 3.12+; the server uses only the standard library.
@@ -30,7 +32,7 @@ python tests/browser_workflow.py
 
 The API suite starts an isolated server/database and verifies trip progression, pickup code verification and retry limits, receipt access, location privacy, chat access, login/logout, origin checks, validation, cancellation, cash confirmation, ratings and booking conflicts. The browser suite uses its own isolated database and drives separate customer and driver browser sessions, including a 390px mobile screen, pickup verification and a real receipt download. Screenshots are saved to ignored `artifacts/`.
 
-Regression coverage also checks that a changed driver offer requires the customer to review and accept its latest version, signing out takes a driver offline, and a large number of requests cannot hide the driver's assigned trip. The browser suite verifies that incoming chat and trip status updates remain visible while typing without erasing the draft or moving keyboard focus. Completed actions prevent duplicate submissions while pending. The mobile layout places active trips above the informational sidebar.
+Regression coverage also checks that a changed driver offer requires the customer to review and accept its latest version, signing out takes a driver offline, and a large number of requests cannot hide the driver's assigned trip. The browser suite verifies that incoming chat and trip status updates remain visible while typing without erasing the draft or moving keyboard focus. It also checks navigation, preservation of booking inputs when visiting Account, expanded history across refresh, and layout at 320px and 390px mobile widths. Completed actions prevent duplicate submissions while pending. The mobile layout places active trips above the informational sidebar.
 
 ## Developing without external accounts
 

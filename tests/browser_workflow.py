@@ -28,9 +28,17 @@ with sync_playwright() as p:
         page.get_by_label('Email address').fill(role+tag+'@example.test');page.get_by_label('Password',exact=True).fill('browser-test-secret-123')
         page.get_by_role('button',name='Create account →').click();page.get_by_role('button',name='Sign out').wait_for()
     b.get_by_role('button',name='Go online →').click();b.get_by_role('button',name='Go offline').wait_for()
+    a.set_viewport_size({'width':1280,'height':1000})
+    a.screenshot(path='artifacts/booking-desktop.png',full_page=True)
+    a.set_viewport_size({'width':390,'height':844})
     for field,value in [('Pickup location','Central station'),('Pickup latitude','6.92'),('Pickup longitude','79.86'),('Destination','City harbour'),('Destination latitude','6.97'),('Destination longitude','79.88'),('Your cash offer','900')]:
         a.get_by_label(field,exact=True).fill(value)
     a.get_by_label('Ride currency').select_option('LKR')
+    a.get_by_role('button',name='Account',exact=True).click()
+    a.get_by_role('heading',name='Your account.').wait_for()
+    a.get_by_role('button',name='Ride',exact=True).click()
+    assert a.get_by_label('Pickup location').input_value()=='Central station'
+    assert a.get_by_label('Ride currency').input_value()=='LKR'
     a.get_by_label('Ride currency').focus()
     assert a.request.post(BASE+'/api/location',data={'lat':6.92,'lng':79.86}).status==200
     a.evaluate('() => refresh(true)')
@@ -44,6 +52,8 @@ with sync_playwright() as p:
     a.set_viewport_size({'width':390,'height':1000})
     a.evaluate('window.scrollTo(0,0)')
     a.screenshot(path='artifacts/customer-offer-mobile.png')
+    a.set_viewport_size({'width':320,'height':740})
+    assert a.locator('body').evaluate('(el)=>el.scrollWidth <= window.innerWidth'), 'Narrow mobile page overflows'
     a.set_viewport_size({'width':390,'height':844})
     a.get_by_role('button',name='Accept',exact=True).click()
     a.get_by_label('Message',exact=True).fill('I am at the main entrance');a.get_by_role('button',name='Send',exact=True).click()
@@ -74,6 +84,17 @@ with sync_playwright() as p:
     assert not errors,errors
     a.evaluate('window.scrollTo(0,0)');b.evaluate('window.scrollTo(0,0)')
     a.screenshot(path='artifacts/customer-mobile.png',full_page=True);b.screenshot(path='artifacts/driver-desktop.png',full_page=True)
+    a.get_by_role('button',name='Activity',exact=True).click()
+    a.get_by_role('heading',name='Your activity.').wait_for()
+    a.locator('.history-item > summary').click()
+    a.get_by_role('button',name='Download cash receipt').wait_for()
+    a.evaluate('() => refresh(true)')
+    assert a.locator('.history-item').evaluate('(el)=>el.open'), 'Refresh collapsed the selected history trip'
+    a.screenshot(path='artifacts/activity-mobile.png',full_page=True)
+    b.get_by_role('button',name='Account',exact=True).click()
+    b.get_by_role('heading',name='Your account.').wait_for()
+    b.get_by_text('Blue hatchback',exact=True).wait_for()
+    assert not errors,errors
     browser.close()
 http.shutdown();http.server_close();temp.cleanup()
 print('PASS: mobile customer + desktop driver registration, cash offer, acceptance, chat, pickup code, trip, rating and receipt download; no browser errors.')
