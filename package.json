@@ -1,0 +1,38 @@
+{
+  "name": "jawa_ride",
+  "version": "1.0.0",
+  "description": "Jawa Ride cash ride marketplace",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "start": "python server.py",
+    "test": "python -m unittest discover -s tests -v",
+    "test:browser": "python tests/browser_workflow.py",
+    "native:configure": "node scripts/configure-native.cjs",
+    "native:sync": "cap sync",
+    "native:android": "cap open android",
+    "native:ios": "cap open ios"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/honeyamn10-source/jawa_ride.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/honeyamn10-source/jawa_ride/issues"
+  },
+  "homepage": "https://github.com/honeyamn10-source/jawa_ride#readme",
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/ios": "^7.6.9"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.9"
+  },
+  "private": true
+}

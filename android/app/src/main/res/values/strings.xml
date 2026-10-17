@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Jawa Ride</string>
+    <string name="title_activity_main">Jawa Ride</string>
+    <string name="package_name">app.jawaride.mobile</string>
+    <string name="custom_url_scheme">app.jawaride.mobile</string>
+</resources>
