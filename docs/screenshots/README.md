@@ -6,11 +6,11 @@ Actual browser screenshots from the automated customer/driver test run, using is
 
 ![Booking workspace](booking-desktop.png)
 
-## Customer ride request and driver offer
+## Customer request window and nearby driver offer
 
 ![Customer app](customer-offer-mobile.png)
 
-## Driver trip and chat
+## Driver matching workspace, trip controls, chat and timeline
 
 ![Driver app](driver-active-desktop.png)
 
@@ -18,6 +18,6 @@ Actual browser screenshots from the automated customer/driver test run, using is
 
 ![Sign in](welcome-desktop.png)
 
-## Activity and receipts
+## Activity, cash receipt and full ride timeline
 
 ![Activity](activity-mobile.png)

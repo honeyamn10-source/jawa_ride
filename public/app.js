@@ -21,6 +21,10 @@ const money = (n, currency) =>
         Number(n),
       )
     : Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const shortTime = (seconds) => {
+  const minutes = Math.max(0, Math.ceil(Number(seconds || 0) / 60));
+  return minutes > 1 ? `${minutes} min` : "under a minute";
+};
 let currencies = ["USD", "EUR", "GBP", "INR", "LKR", "CAD", "AUD", "JPY"];
 function toast(message, error = false) {
   const n = $("#notice");
@@ -158,7 +162,8 @@ function auth() {
   };
 }
 function rideForm() {
-  return `<section class="card booking-card"><div class="card-heading"><span class="square-icon">${icon("car")}</span><div><span class="eyebrow">LET'S GET GOING</span><h2>Where to?</h2></div></div><form id="ride-form"><div class="location-entry"><span class="location-dot"></span><div><label for="pickup">Pickup location</label><input id="pickup" name="pickup" placeholder="Enter your pickup" required maxlength="200"></div></div><div class="coordinate-row"><div><label for="plat">Pickup latitude</label><input id="plat" name="plat" type="number" step="any" min="-90" max="90" required placeholder="Latitude"></div><div><label for="plng">Pickup longitude</label><input id="plng" name="plng" type="number" step="any" min="-180" max="180" required placeholder="Longitude"></div></div><button type="button" id="pickup-gps" class="location-button">${icon("target")} Use my current location</button><div class="location-entry destination-entry"><span class="location-dot square"></span><div><label for="destination">Destination</label><input id="destination" name="destination" placeholder="Where are you heading?" required maxlength="200"></div></div><div class="coordinate-row"><div><label for="dlat">Destination latitude</label><input id="dlat" name="dlat" type="number" step="any" min="-90" max="90" required placeholder="Latitude"></div><div><label for="dlng">Destination longitude</label><input id="dlng" name="dlng" type="number" step="any" min="-180" max="180" required placeholder="Longitude"></div></div><div class="fare-section"><div class="section-title"><h3>Make it your fare.</h3><span class="soft-badge">${icon("cash")} Cash</span></div><div class="fare-inputs"><div><label for="currency">Ride currency</label><select id="currency" name="currency">${currencies.map((c) => `<option value="${c}" ${c === "USD" ? "selected" : ""}>${c}</option>`).join("")}</select></div><div><label for="budget">Your cash offer</label><input id="budget" name="budget" type="number" min="1" max="100000" step="0.01" placeholder="0.00" required></div></div><p class="hint">Drivers can accept your price or send a counteroffer.</p></div><button class="primary wide">Find a driver ${icon("arrow")}</button><p class="form-note">Coordinates are needed for pickup and destination. Address search is not connected yet.</p></form></section>`;
+  const saved = (state.places || []).map((p) => `<button type="button" class="saved-place" data-place="${p.id}" data-label="${esc(p.location)}" data-lat="${p.lat}" data-lng="${p.lng}"><b>${esc(p.label)}</b><span>${esc(p.location)}</span></button>`).join("");
+  return `<section class="card booking-card"><div class="card-heading"><span class="square-icon">${icon("car")}</span><div><span class="eyebrow">LET'S GET GOING</span><h2>Where to?</h2></div></div>${saved ? `<div class="saved-place-row"><span>Saved places</span>${saved}</div>` : ""}<form id="ride-form"><div class="location-entry"><span class="location-dot"></span><div><label for="pickup">Pickup location</label><input id="pickup" name="pickup" placeholder="Enter your pickup" required maxlength="200"></div></div><div class="coordinate-row"><div><label for="plat">Pickup latitude</label><input id="plat" name="plat" type="number" step="any" min="-90" max="90" required placeholder="Latitude"></div><div><label for="plng">Pickup longitude</label><input id="plng" name="plng" type="number" step="any" min="-180" max="180" required placeholder="Longitude"></div></div><button type="button" id="pickup-gps" class="location-button">${icon("target")} Use my current location</button><div class="location-entry destination-entry"><span class="location-dot square"></span><div><label for="destination">Destination</label><input id="destination" name="destination" placeholder="Where are you heading?" required maxlength="200"></div></div><div class="coordinate-row"><div><label for="dlat">Destination latitude</label><input id="dlat" name="dlat" type="number" step="any" min="-90" max="90" required placeholder="Latitude"></div><div><label for="dlng">Destination longitude</label><input id="dlng" name="dlng" type="number" step="any" min="-180" max="180" required placeholder="Longitude"></div></div><div class="fare-section"><div class="section-title"><h3>Make it your fare.</h3><span class="soft-badge">${icon("cash")} Cash</span></div><div class="fare-inputs"><div><label for="currency">Ride currency</label><select id="currency" name="currency">${currencies.map((c) => `<option value="${c}" ${c === "USD" ? "selected" : ""}>${c}</option>`).join("")}</select></div><div><label for="budget">Your cash offer</label><input id="budget" name="budget" type="number" min="1" max="100000" step="0.01" placeholder="0.00" required></div></div><p class="hint">Drivers can accept your price or send a counteroffer.</p></div><button class="primary wide">Find a driver ${icon("arrow")}</button><p class="form-note">Coordinates are needed for pickup and destination. Address search is not connected yet.</p></form><form data-place-form class="save-place-form"><div><b>Keep this pickup handy</b><span>Save a landmark for your next ride.</span></div><label for="place-label" class="sr-only">Saved place name</label><input id="place-label" name="label" maxlength="60" placeholder="e.g. Home"><button class="ghost small">Save place</button></form></section>`;
 }
 function route(r) {
   return `<div class="route"><div><span class="route-node"></span><small>PICKUP</small><strong>${esc(r.pickup)}</strong></div><div><span class="route-node end"></span><small>DESTINATION</small><strong>${esc(r.destination)}</strong></div></div>`;
@@ -172,6 +177,10 @@ function progress(r) {
     r.status,
   );
   return `<ol class="trip-progress" aria-label="Trip progress">${["Matched", "At pickup", "On the way", "Arrived"].map((label, i) => `<li class="${i <= index ? "done" : ""}"><span>${i < index ? icon("check") : i + 1}</span><small>${label}</small></li>`).join("")}</ol>`;
+}
+function rideTimeline(r) {
+  if (!r.events?.length) return "";
+  return `<section class="ride-timeline"><div class="section-title"><h3>Ride timeline</h3><span>${r.events.length} update${r.events.length === 1 ? "" : "s"}</span></div><ol>${r.events.map((event) => `<li><span></span><div><b>${esc(event.kind)}</b><p>${esc(event.detail)}</p><time>${new Date(event.created * 1000).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time></div></li>`).join("")}</ol></section>`;
 }
 function trip(r) {
   const customer = state.user.role === "customer",
@@ -191,6 +200,17 @@ function trip(r) {
             : "Your next stop awaits.";
   return `<article class="card trip-card"><div class="ride-head"><span class="eyebrow">JAWA RIDE <span class="ride-number">#${String(r.id).padStart(4, "0")}</span></span><span class="status status-${r.status}"><span></span>${esc(r.status.replaceAll("_", " "))}</span></div><h2>${title}</h2>${progress(r)}${route(r)}<div class="metrics"><div><small>${icon("pin")} Direct distance</small><strong>${r.distance}<span> km</span></strong></div><div><small>${icon("cash")} ${r.fare ? "Agreed fare" : "Customer offer"}</small><strong>${money(r.fare ?? r.budget, r.currency)}</strong></div>${r.pickup_distance !== null ? `<div><small>${icon("car")} To pickup · direct</small><strong>${r.pickup_distance}<span> km</span></strong></div>` : ""}</div><p class="distance-note">Distances are straight-line estimates, not driving distances.</p>${r.driver ? `<div class="person-strip"><span class="avatar">${initials(customer ? r.driver.name : r.customer_name)}</span><div><small>${customer ? "YOUR DRIVER" : "YOUR CUSTOMER"}</small><b>${esc(customer ? r.driver.name : r.customer_name)}</b>${customer ? `<span>${esc(r.driver.vehicle)} · ${esc(r.driver.plate)}</span>` : ""}</div>${icon("car")}</div>` : !customer ? `<div class="request-person"><span class="avatar tiny">${initials(r.customer_name)}</span> Requested by <b>${esc(r.customer_name)}</b></div>` : ""}${!customer ? `<details class="location-details"><summary>View exact coordinates ${icon("chevron")}</summary><p class="hint">Pickup: ${r.plat}, ${r.plng}<br>Destination: ${r.dlat}, ${r.dlng}</p></details>` : ""}${r.status === "requested" ? (customer ? `<div class="section-title offers-heading"><h3>Choose your driver</h3><span class="count-badge">${r.offers.length} offer${r.offers.length === 1 ? "" : "s"}</span></div>${r.offers.length ? r.offers.map((o) => offerCard(r, o)).join("") : `<div class="waiting"><span class="waiting-ring">${icon("car")}</span><div><b>Your request is out there.</b><p>Offers appear here as drivers respond.</p></div></div>`}` : `<form data-offer-form="${r.id}" class="offer-form"><h3>Your ride. Your rate.</h3><div class="cols"><div><label>Cash fare<input aria-label="Cash fare" name="fare" type="number" min="1" max="100000" step=".01" value="${r.offers[0]?.fare ?? r.budget}" required></label></div><div><label>Arrival · minutes<input aria-label="Arrival minutes" name="eta" type="number" min="1" max="180" value="${r.offers[0]?.eta ?? 5}" required></label></div></div><button class="wide primary">${r.offers.length ? "Update offer" : "Send offer"} ${icon("arrow")}</button></form>`) : ""}${customer && r.pickup_pin ? `<section class="pickup-code"><div><span class="eyebrow">YOUR PICKUP CODE</span><strong data-pickup-code>${esc(r.pickup_pin)}</strong></div><span class="code-shield">${icon("shield")}</span><p>Share with your driver when you meet at pickup.</p></section>` : ""}${mine && active ? `<div class="trip-actions">${r.status === "accepted" ? `<button class="primary wide" data-status="arrived" data-ride="${r.id}">I’ve arrived at pickup ${icon("pin")}</button>` : r.status === "arrived" ? `<form data-start="${r.id}"><label>Customer pickup code<input aria-label="Customer pickup code" name="pickup_pin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" placeholder="Enter the 6-digit code" required></label><button class="primary wide">Start trip ${icon("arrow")}</button></form>` : r.status === "in_progress" ? `<form data-complete="${r.id}"><label class="check"><input type="checkbox" name="cash" required> I received ${money(r.fare, r.currency)} in cash</label><button class="primary wide">Complete trip ${icon("check")}</button></form>` : ""}</div>` : ""}${r.cash_confirmed ? `<div class="receipt-banner"><span class="square-icon">${icon("check")}</span><div><b>All settled. In cash.</b><small>Your driver confirmed payment.</small></div></div><button class="ghost wide" data-receipt="${r.id}">${icon("cash")} Download cash receipt</button>` : ""}${r.driver_id && (customer || mine) ? chat(r, active) : ""}${customer && r.status === "completed" ? (r.rating ? `<div class="rating-thanks"><span>${"★".repeat(r.rating)}</span><p>Your rating: ${r.rating}/5 · Thanks for riding with us.</p></div>` : `<form data-rating="${r.id}" class="rating-form"><label for="rating-${r.id}">How was your ride?</label><select id="rating-${r.id}" aria-label="Rate trip" name="stars"><option value="5">★★★★★ · Excellent</option><option value="4">★★★★ · Good</option><option value="3">★★★ · Okay</option><option value="2">★★ · Poor</option><option value="1">★ · Bad</option></select><button class="ghost wide">Rate trip</button></form>`) : ""}${active && (customer || mine) && r.status !== "in_progress" ? `<div class="cancel-row"><button class="text-button danger" data-status="cancelled" data-ride="${r.id}">Cancel ride</button><span>Change of plans? We understand.</span></div>` : ""}</article>`;
 }
+function trip(r) {
+  const customer = state.user.role === "customer";
+  const mine = r.driver_id === state.user.id;
+  const active = !["completed", "cancelled"].includes(r.status);
+  const driverControls = mine && active ? r.status === "accepted" ? `<button class="primary wide" data-status="arrived" data-ride="${r.id}">I’ve arrived at pickup ${icon("pin")}</button>` : r.status === "arrived" ? `<form data-start="${r.id}"><label>Customer pickup code<input aria-label="Customer pickup code" name="pickup_pin" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" placeholder="Enter the 6-digit code" required></label><button class="primary wide">Start trip ${icon("arrow")}</button></form>` : r.status === "in_progress" ? `<form data-complete="${r.id}"><label class="check"><input type="checkbox" name="cash" required> I received ${money(r.fare, r.currency)} in cash</label><button class="primary wide">Complete trip ${icon("check")}</button></form>` : "" : "";
+  const matching = !customer && r.status === "requested" ? `<form data-offer-form="${r.id}" class="offer-form"><h3>Make an offer</h3><p class="hint">${r.pickup_distance} km away · within your ${state.user.matching_radius} km matching radius.</p><div class="cols"><label>Cash fare<input aria-label="Cash fare" name="fare" type="number" min="1" max="100000" step=".01" value="${r.offers[0]?.fare ?? r.budget}" required></label><label>Arrival · minutes<input aria-label="Arrival minutes" name="eta" type="number" min="1" max="180" value="${r.offers[0]?.eta ?? 5}" required></label></div><button class="wide primary">${r.offers.length ? "Update offer" : "Send offer"} ${icon("arrow")}</button></form>` : "";
+  const customerOffers = customer && r.status === "requested" ? `<div class="section-title offers-heading"><h3>Choose your driver</h3><span class="count-badge">${r.offers.length} offer${r.offers.length === 1 ? "" : "s"}</span></div>${r.offers.length ? r.offers.map((o) => offerCard(r, o)).join("") : `<div class="waiting"><span class="waiting-ring">${icon("car")}</span><div><b>Your request is out there.</b><p>Only nearby drivers with a current live location can respond.</p></div></div>`}` : "";
+  const person = r.driver ? `<div class="person-strip"><span class="avatar">${initials(customer ? r.driver.name : r.customer_name)}</span><div><small>${customer ? "YOUR DRIVER" : "YOUR CUSTOMER"}</small><b>${esc(customer ? r.driver.name : r.customer_name)}</b>${customer ? `<span>${esc(r.driver.vehicle)} · ${esc(r.driver.plate)}</span>` : ""}</div>${icon("car")}</div>` : !customer ? `<div class="request-person"><span class="avatar tiny">${initials(r.customer_name)}</span> Requested by <b>${esc(r.customer_name)}</b></div>` : "";
+  const title = r.status === "requested" ? customer ? "Finding your kind of ride." : "A nearby request." : r.status === "completed" ? "Another good journey." : r.status === "cancelled" ? "Ride cancelled." : customer ? "You’re in good company." : "Your next stop awaits.";
+  return `<article class="card trip-card"><div class="ride-head"><span class="eyebrow">JAWA RIDE <span class="ride-number">#${String(r.id).padStart(4,"0")}</span></span><span class="status status-${r.status}"><span></span>${esc(r.status.replaceAll("_"," "))}</span></div><h2>${title}</h2>${customer && r.status === "requested" && r.expires_in !== null ? `<div class="request-window">${icon("clock")} Request stays open for ${shortTime(r.expires_in)}. Choose an offer when it feels right.</div>` : ""}${progress(r)}${route(r)}<div class="metrics"><div><small>${icon("pin")} Direct distance</small><strong>${r.distance}<span> km</span></strong></div><div><small>${icon("cash")} ${r.fare ? "Agreed fare" : "Customer offer"}</small><strong>${money(r.fare ?? r.budget,r.currency)}</strong></div>${r.pickup_distance !== null ? `<div><small>${icon("car")} To pickup · direct</small><strong>${r.pickup_distance}<span> km</span></strong></div>` : ""}</div><p class="distance-note">Distances are straight-line estimates, not driving distances.</p>${person}${!customer ? `<details class="location-details"><summary>View exact coordinates ${icon("chevron")}</summary><p class="hint">Pickup: ${r.plat}, ${r.plng}<br>Destination: ${r.dlat}, ${r.dlng}</p></details>` : ""}${customerOffers}${matching}${customer && r.pickup_pin ? `<section class="pickup-code"><div><span class="eyebrow">YOUR PICKUP CODE</span><strong data-pickup-code>${esc(r.pickup_pin)}</strong></div><span class="code-shield">${icon("shield")}</span><p>Share with your driver when you meet at pickup.</p></section>` : ""}${driverControls}${r.cash_confirmed ? `<div class="receipt-banner"><span class="square-icon">${icon("check")}</span><div><b>All settled. In cash.</b><small>Your driver confirmed payment.</small></div></div><button class="ghost wide" data-receipt="${r.id}">${icon("cash")} Download cash receipt</button>` : ""}${r.driver_id && (customer || mine) ? chat(r,active) : ""}${rideTimeline(r)}${customer && r.status === "completed" ? (r.rating ? `<div class="rating-thanks"><span>${"★".repeat(r.rating)}</span><p>Your rating: ${r.rating}/5 · Thanks for riding with us.</p></div>` : `<form data-rating="${r.id}" class="rating-form"><label for="rating-${r.id}">How was your ride?</label><select id="rating-${r.id}" aria-label="Rate trip" name="stars"><option value="5">★★★★★ · Excellent</option><option value="4">★★★★ · Good</option><option value="3">★★★ · Okay</option><option value="2">★★ · Poor</option><option value="1">★ · Bad</option></select><button class="ghost wide">Rate trip</button></form>`) : ""}${r.status === "cancelled" && r.cancel_reason ? `<p class="cancellation-note"><b>Cancellation note:</b> ${esc(r.cancel_reason)}</p>` : ""}${active && (customer || mine) && r.status !== "in_progress" ? `<form class="cancel-row" data-cancel="${r.id}"><label>Need to cancel?<select aria-label="Cancellation reason" name="cancel_reason"><option>Changed plans</option><option>Waiting too long</option><option>Found another ride</option><option>Other</option></select></label><button class="text-button danger">Cancel ride</button></form>` : ""}</article>`;
+}
 function chat(r, active) {
   return `<div class="chat"><div class="section-title"><h3>${icon("chat")} Trip chat</h3><span class="chat-label">${active ? "Just you two" : "Conversation closed"}</span></div><div class="messages" aria-live="polite">${r.messages.length ? r.messages.map((m) => `<div class="bubble ${m.user_id === state.user.id ? "mine" : ""}"><small>${esc(m.name)}<time>${new Date(m.created * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></small>${esc(m.body)}</div>`).join("") : '<div class="chat-empty">A quick hello makes pickup easier.<br>Send a message to get started.</div>'}</div>${active ? `<form data-chat="${r.id}"><input name="body" aria-label="Message" placeholder="Write a message…" maxlength="1000" required><button aria-label="Send">${icon("arrow")}</button></form>` : ""}</div>`;
 }
@@ -208,6 +228,14 @@ function driverPanel(u, active, history) {
           .join("")
       : "<strong>Getting started</strong>"
   }<p>${paid.length} completed trip${paid.length === 1 ? "" : "s"} in your loaded history</p></section>`;
+}
+function driverPanel(u, active, history) {
+  const busy = active.some((r) => r.driver_id === u.id);
+  const paid = history.filter((r) => r.status === "completed");
+  const totals = {};
+  for (const r of paid) totals[r.currency] = (totals[r.currency] || 0) + r.fare;
+  const ready = state.matching?.ready || state.matching?.location_current;
+  return `<section class="card driver-panel"><div class="driver-avatar">${initials(u.name)}<span class="availability-dot ${ready ? "online" : ""}"></span></div><span class="eyebrow">YOUR DRIVER WORKSPACE</span><h2>${busy ? "Good things ahead." : u.online && ready ? "You’re ready to roll." : "Ready when you are."}</h2><p>${busy ? "Focus on this journey. New requests will be here when you finish." : u.online && ready ? "Your live location is current. Nearby requests are ready to review." : "Share a current location, then go online to receive nearby requests."}</p><div class="matching-status ${ready ? "ready" : ""}">${icon("target")} <span>${ready ? `Matching within ${u.matching_radius} km` : "Location is needed for matching"}</span></div><button id="share-location" class="location-button wide">${icon("target")} ${ready ? "Refresh live location" : "Share live location"}</button><button id="availability" class="${u.online ? "ghost" : "primary"} wide">${u.online ? "Go offline" : "Go online →"}</button><p class="hint" id="location-state"></p><div class="vehicle-tag">${icon("car")}<div><b>${esc(u.vehicle)}</b><span>${esc(u.plate)}</span></div></div></section><section class="card earnings-card"><div class="section-title"><h3>Good work adds up.</h3>${icon("cash")}</div><span class="eyebrow">CASH FROM RECENT TRIPS</span>${Object.keys(totals).length ? Object.entries(totals).map(([currency,total]) => `<strong>${money(total,currency)}</strong>`).join("") : "<strong>Getting started</strong>"}<p>${paid.length} completed trip${paid.length === 1 ? "" : "s"} in your loaded history</p></section>`;
 }
 function journeyPanel(r) {
   return `<section class="journey-panel"><span class="eyebrow">YOUR JOURNEY, YOUR WAY</span><h2>${r.status === "requested" ? "A good ride<br>is on the way." : "Let’s make<br>this a good trip."}</h2>${artPanel()}<div class="journey-tip">${icon("cash")}<span>Agree on the fare.<br><b>Pay in cash when you arrive.</b></span></div></section>`;
@@ -229,6 +257,10 @@ function activityPage(history) {
 }
 function accountPage(u) {
   return `<div class="page-heading"><span class="eyebrow">A LITTLE ABOUT YOU</span><h1>Your account.</h1><p>All set for wherever you’re going next.</p></div><section class="card account-card"><span class="driver-avatar">${initials(u.name)}</span><h2>${esc(u.name)}</h2><span class="soft-badge">${icon(u.role === "driver" ? "car" : "user")} ${u.role === "driver" ? "Driver account" : "Customer account"}</span><dl><div><dt>Email</dt><dd>${esc(u.email)}</dd></div><div><dt>Payment</dt><dd>Cash, paid directly to your driver</dd></div>${u.role === "driver" ? `<div><dt>Vehicle</dt><dd>${esc(u.vehicle)}</dd></div><div><dt>Registration</dt><dd>${esc(u.plate)}</dd></div>` : ""}</dl><p class="hint">Email is used for sign-in. Phone and identity verification are not connected.</p></section>`;
+}
+function accountPage(u) {
+  const places = (state.places || []).map((p) => `<li><div><b>${esc(p.label)}</b><span>${esc(p.location)}</span></div><button class="text-button danger" data-delete-place="${p.id}">Remove</button></li>`).join("");
+  return `<div class="page-heading"><span class="eyebrow">A LITTLE ABOUT YOU</span><h1>Your account.</h1><p>Keep the details that help each ride run smoothly up to date.</p></div><section class="card account-card"><span class="driver-avatar">${initials(u.name)}</span><h2>${esc(u.name)}</h2><span class="soft-badge">${icon(u.role === "driver" ? "car" : "user")} ${u.role === "driver" ? "Driver account" : "Customer account"}</span><form data-profile class="profile-form"><label>Display name<input aria-label="Display name" name="name" maxlength="80" value="${esc(u.name)}" required></label><label>Email address<input aria-label="Email address" value="${esc(u.email)}" disabled></label>${u.role === "driver" ? `<label>Vehicle<input aria-label="Vehicle" name="vehicle" maxlength="80" value="${esc(u.vehicle)}" required></label><label>Registration plate<input aria-label="Registration plate" name="plate" maxlength="30" value="${esc(u.plate)}" required></label><label>Matching radius<select aria-label="Matching radius" name="matching_radius">${[3,5,10,15,25,50,100].map((n) => `<option value="${n}" ${Number(u.matching_radius) === n ? "selected" : ""}>${n} km from pickup</option>`).join("")}</select></label>` : ""}<button class="primary wide">Save account changes</button></form><p class="hint">Email is used for sign-in. Phone and identity verification are not connected.</p></section>${u.role === "customer" ? `<section class="card saved-places-card"><div class="section-title"><h2>Saved places</h2><span>${state.places?.length || 0}/8</span></div>${places ? `<ul>${places}</ul>` : `<p class="hint">Save a pickup location from the Ride screen to get started.</p>`}</section>` : ""}`;
 }
 function render() {
   const focus = rememberFocus(),
@@ -369,7 +401,9 @@ function locationText() {
     label.textContent =
       locationWatch !== null
         ? "Live location sharing is active while this page is open."
-        : "Location sharing is stopped. Enable it to update distance to pickup.";
+        : state?.matching?.ready
+          ? "Your latest location is ready for matching. Keep sharing while you drive."
+          : "Share a current location before you go online.";
   if (button)
     button.textContent =
       locationWatch !== null ? "Stop sharing location" : "Share live location";
@@ -388,7 +422,7 @@ function toggleLocation() {
       api("location", {
         lat: p.coords.latitude,
         lng: p.coords.longitude,
-      }).catch((e) => {
+      }).then(() => refresh(true)).catch((e) => {
         if (e.status === 401) {
           stopLocation();
           locationText();
@@ -481,8 +515,19 @@ function bind() {
         toast("Pickup coordinates updated. Add your street or landmark.");
       });
   if ($("#availability"))
-    $("#availability").onclick = () =>
-      perform("availability", { online: !state.user.online });
+    $("#availability").onclick = () => {
+      if (state.user.online) return perform("availability", { online: false });
+      if (state.matching?.location_current) return perform("availability", { online: true }, "You’re online for nearby requests.");
+      gps(async (p) => {
+        try {
+          await api("location", { lat: p.coords.latitude, lng: p.coords.longitude });
+          await perform("availability", { online: true }, "You’re online for nearby requests.");
+        } catch (e) {
+          toast(e.message, true);
+        }
+      });
+      toast("Getting your location before going online…");
+    };
   if ($("#share-location")) $("#share-location").onclick = toggleLocation;
   locationText();
   document.querySelectorAll("[data-offer-form]").forEach(
@@ -550,6 +595,44 @@ function bind() {
         );
       }),
   );
+  document.querySelectorAll("[data-cancel]").forEach(
+    (f) =>
+      (f.onsubmit = (e) => {
+        e.preventDefault();
+        if (confirm("Cancel this ride?"))
+          perform(`rides/${f.dataset.cancel}/status`, { status: "cancelled", cancel_reason: values(f).cancel_reason }, "Ride cancelled.", f);
+      }),
+  );
+  document.querySelectorAll("[data-place]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (!$("#pickup")) return;
+        $("#pickup").value = b.dataset.label;
+        $("#plat").value = b.dataset.lat;
+        $("#plng").value = b.dataset.lng;
+        saveDraft({ target: $("#pickup") });
+        toast(`${b.textContent.trim()} set as pickup.`);
+      }),
+  );
+  document.querySelectorAll("[data-place-form]").forEach(
+    (f) =>
+      (f.onsubmit = (e) => {
+        e.preventDefault();
+        const pickup = $("#pickup"), lat = $("#plat"), lng = $("#plng");
+        if (!pickup?.value || !lat?.value || !lng?.value) return toast("Add a pickup name and coordinates before saving it.", true);
+        perform("places", { ...values(f), location: pickup.value, lat: lat.value, lng: lng.value }, "Saved place added.", f);
+      }),
+  );
+  document.querySelectorAll("[data-delete-place]").forEach(
+    (b) => (b.onclick = () => perform(`places/${b.dataset.deletePlace}`, {}, "Saved place removed.")),
+  );
+  document.querySelectorAll("[data-profile]").forEach(
+    (f) =>
+      (f.onsubmit = (e) => {
+        e.preventDefault();
+        perform("profile", values(f), "Account updated.", f);
+      }),
+  );
   busyButtons(mutating);
 }
 async function refresh(force = false) {
@@ -591,3 +674,7 @@ api("config")
 setInterval(() => {
   if (state) refresh();
 }, 3000);
+setInterval(() => {
+  if (state?.user.role === "driver" && state.user.online && locationWatch !== null)
+    api("presence", {}).catch(() => {});
+}, 20000);

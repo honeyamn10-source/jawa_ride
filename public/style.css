@@ -2623,6 +2623,200 @@ footer {
 .brand-symbol > span {
   display: none;
 }
+.request-window,
+.matching-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 4px;
+  padding: 11px 12px;
+  border: 1px solid #dce7c7;
+  border-radius: 10px;
+  background: #f6faed;
+  color: #526544;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.matching-status {
+  margin: 16px 0 0;
+  background: #fafaf7;
+  border-color: var(--line);
+}
+.matching-status.ready {
+  color: #314d2d;
+  background: #eff8e5;
+  border-color: #cbe3b3;
+}
+.saved-place-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0;
+}
+.saved-place-row > span {
+  width: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.saved-place {
+  display: grid;
+  gap: 2px;
+  min-width: 104px;
+  padding: 9px 12px;
+  border: 1px solid #dfe5d8;
+  border-radius: 10px;
+  background: #fafbf7;
+  color: var(--ink);
+  text-align: left;
+  box-shadow: none;
+}
+.saved-place:hover:not(:disabled) {
+  background: #f0f6e5;
+}
+.saved-place span,
+.save-place-form span,
+.saved-places-card li span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.save-place-form {
+  display: grid;
+  grid-template-columns: 1fr minmax(120px, .8fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.save-place-form > div {
+  display: grid;
+  gap: 2px;
+}
+.save-place-form > div > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ride-timeline {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.ride-timeline .section-title span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ride-timeline ol {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ride-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  min-height: 59px;
+}
+.ride-timeline li > span {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  margin: 5px 0 0 1px;
+  border-radius: 50%;
+  background: #94ba49;
+}
+.ride-timeline li:not(:last-child) > span:after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 4px;
+  width: 1px;
+  height: 46px;
+  background: #dbe4d4;
+}
+.ride-timeline b {
+  display: block;
+  font-size: 13px;
+}
+.ride-timeline p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.ride-timeline time {
+  color: #8c958c;
+  font-size: 11px;
+}
+.cancellation-note {
+  margin: 18px 0 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #fcf5f2;
+  color: #855849;
+  font-size: 12px;
+}
+.cancel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 14px;
+}
+.cancel-row label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.cancel-row select {
+  min-width: 155px;
+  padding: 7px 26px 7px 9px;
+  font-size: 12px;
+}
+.profile-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  text-align: left;
+}
+.profile-form .wide {
+  margin-top: 2px;
+}
+.saved-places-card {
+  margin-top: 18px;
+}
+.saved-places-card > ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.saved-places-card li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.saved-places-card li > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.saved-places-card li button {
+  flex: 0 0 auto;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
 @media (max-width: 640px) {
   .brand-symbol svg {
     width: 25px;
@@ -2653,5 +2847,19 @@ footer {
   }
   .header-note {
     display: none;
+  }
+  .save-place-form {
+    grid-template-columns: 1fr;
+  }
+  .save-place-form button {
+    width: 100%;
+  }
+  .cancel-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .cancel-row select,
+  .cancel-row button {
+    width: 100%;
   }
 }

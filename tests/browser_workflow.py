@@ -27,12 +27,20 @@ with sync_playwright() as p:
             page.get_by_label('Vehicle model & colour').fill('Blue hatchback');page.get_by_label('Registration plate').fill('JAWA-1')
         page.get_by_label('Email address').fill(role+tag+'@example.test');page.get_by_label('Password',exact=True).fill('browser-test-secret-123')
         page.get_by_role('button',name='Create account →').click();page.get_by_role('button',name='Sign out').wait_for()
+    assert b.request.post(BASE+'/api/location',data={'lat':6.91,'lng':79.85}).status==200
+    matching_state=b.request.get(BASE+'/api/state').json()
+    assert matching_state['matching']['location_current'],matching_state
+    b.evaluate('() => refresh(true)')
+    b.get_by_text('Matching within 15 km',exact=True).wait_for()
     b.get_by_role('button',name='Go online →').click();b.get_by_role('button',name='Go offline').wait_for()
     a.set_viewport_size({'width':1280,'height':1000})
     a.screenshot(path='artifacts/booking-desktop.png',full_page=True)
     a.set_viewport_size({'width':390,'height':844})
     for field,value in [('Pickup location','Central station'),('Pickup latitude','6.92'),('Pickup longitude','79.86'),('Destination','City harbour'),('Destination latitude','6.97'),('Destination longitude','79.88'),('Your cash offer','900')]:
         a.get_by_label(field,exact=True).fill(value)
+    a.get_by_label('Saved place name').fill('Home');a.get_by_role('button',name='Save place').click()
+    a.get_by_role('button',name='Home Central station').wait_for()
+    assert a.get_by_label('Pickup location').input_value()=='Central station'
     a.get_by_label('Ride currency').select_option('LKR')
     a.get_by_role('button',name='Account',exact=True).click()
     a.get_by_role('heading',name='Your account.').wait_for()
@@ -93,7 +101,7 @@ with sync_playwright() as p:
     a.screenshot(path='artifacts/activity-mobile.png',full_page=True)
     b.get_by_role('button',name='Account',exact=True).click()
     b.get_by_role('heading',name='Your account.').wait_for()
-    b.get_by_text('Blue hatchback',exact=True).wait_for()
+    assert b.get_by_label('Vehicle',exact=True).input_value()=='Blue hatchback'
     assert not errors,errors
     browser.close()
 http.shutdown();http.server_close();temp.cleanup()

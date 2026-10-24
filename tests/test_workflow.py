@@ -26,11 +26,13 @@ class Workflow(unittest.TestCase):
     def ride(self,c):
         code,r=c.call('rides',{'pickup':'Central station','destination':'Harbour','plat':6.92,'plng':79.86,'dlat':6.97,'dlng':79.88,'budget':900,'currency':'LKR'})
         self.assertEqual(code,200,r);return r['id']
+    def online(self,driver,lat=6.91,lng=79.85):
+        self.assertEqual(driver.call('location',{'lat':lat,'lng':lng})[0],200)
+        self.assertEqual(driver.call('availability',{'online':True})[0],200)
     def test_complete_cash_trip_and_authorization(self):
         c,_=self.account('customer');d,_=self.account('driver');outsider,_=self.account('customer');rid=self.ride(c)
         self.assertEqual(d.call(f'rides/{rid}/offer',{'fare':850,'eta':4})[0],403)
-        self.assertEqual(d.call('availability',{'online':True})[0],200)
-        self.assertEqual(d.call('location',{'lat':6.91,'lng':79.85})[0],200)
+        self.online(d)
         self.assertEqual(d.call(f'rides/{rid}/offer',{'fare':850,'eta':4})[0],200)
         ride=c.call('state')[1]['rides'][0];self.assertGreater(ride['distance'],0);self.assertEqual(ride['currency'],'LKR');offer=ride['offers'][0]['id']
         self.assertEqual(outsider.call(f'rides/{rid}/accept',{'offer_id':offer,'offer_version':1})[0],403)
@@ -64,7 +66,7 @@ class Workflow(unittest.TestCase):
 
     def test_pickup_code_attempt_limit_persists(self):
         c,_=self.account('customer');d,_=self.account('driver');rid=self.ride(c)
-        d.call('availability',{'online':True});d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
+        self.online(d);d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
         offer=c.call('state')[1]['rides'][0]['offers'][0]['id']
         c.call(f'rides/{rid}/accept',{'offer_id':offer,'offer_version':1});d.call(f'rides/{rid}/status',{'status':'arrived'})
         pin=c.call('state')[1]['rides'][0]['pickup_pin']
@@ -80,13 +82,13 @@ class Workflow(unittest.TestCase):
     def test_booking_race(self):
         c,_=self.account('customer');d,_=self.account('driver');e,_=self.account('driver');rid=self.ride(c)
         for driver in [d,e]:
-            driver.call('availability',{'online':True});driver.call(f'rides/{rid}/offer',{'fare':100,'eta':2})
+            self.online(driver);driver.call(f'rides/{rid}/offer',{'fare':100,'eta':2})
         offers=c.call('state')[1]['rides'][0]['offers']
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             results=list(pool.map(lambda o:c.call(f'rides/{rid}/accept',{'offer_id':o['id'],'offer_version':o['version']})[0],offers))
         self.assertEqual(sorted(results),[200,409])
     def test_one_driver_cannot_accept_two_trips(self):
-        c,_=self.account('customer');c2,_=self.account('customer');d,_=self.account('driver');d.call('availability',{'online':True})
+        c,_=self.account('customer');c2,_=self.account('customer');d,_=self.account('driver');self.online(d)
         for customer in [c,c2]:
             rid=self.ride(customer);d.call(f'rides/{rid}/offer',{'fare':200,'eta':5})
         r1=c.call('state')[1]['rides'][0];r2=c2.call('state')[1]['rides'][0]
@@ -98,9 +100,35 @@ class Workflow(unittest.TestCase):
         self.assertEqual(c.call('location',{'lat':91,'lng':0})[0],400)
         self.assertEqual(c.call('location',{'lat':'NaN','lng':0})[0],400)
         self.assertEqual(c.call(f'rides/{rid}/status',{'status':'cancelled'})[0],200)
-        d.call('availability',{'online':True})
+        self.online(d)
         self.assertEqual(d.call(f'rides/{rid}/offer',{'fare':200,'eta':4})[0],409)
         self.ride(c)
+
+    def test_nearby_matching_requires_a_current_driver_location(self):
+        c,_=self.account('customer');d,_=self.account('driver');rid=self.ride(c)
+        self.assertEqual(d.call('availability',{'online':True})[0],409)
+        d.call('location',{'lat':0,'lng':0});self.assertEqual(d.call('availability',{'online':True})[0],200)
+        self.assertFalse(any(r['id']==rid for r in d.call('state')[1]['rides']))
+        d.call('location',{'lat':6.91,'lng':79.85})
+        request=next(r for r in d.call('state')[1]['rides'] if r['id']==rid)
+        self.assertLess(request['pickup_distance'],15)
+        self.assertEqual(d.call(f'rides/{rid}/offer',{'fare':700,'eta':4})[0],200)
+        offer=c.call('state')[1]['rides'][0]['offers'][0]
+        with server.connect() as db: db.execute('UPDATE users SET last_location_at=1 WHERE id=?',(d.call('state')[1]['user']['id'],))
+        self.assertFalse(c.call('state')[1]['rides'][0]['offers'][0]['available'])
+        self.assertEqual(c.call(f'rides/{rid}/accept',{'offer_id':offer['id'],'offer_version':offer['version']})[0],409)
+
+    def test_saved_places_profile_and_cancellation_timeline(self):
+        c,_=self.account('customer')
+        self.assertEqual(c.call('places',{'label':'Home','location':'Central station','lat':6.92,'lng':79.86})[0],200)
+        self.assertEqual(c.call('profile',{'name':'Maya Rider'})[0],200)
+        state=c.call('state')[1]
+        self.assertEqual((state['user']['name'],state['places'][0]['label']),('Maya Rider','Home'))
+        rid=self.ride(c)
+        self.assertEqual(c.call(f'rides/{rid}/status',{'status':'cancelled','cancel_reason':'Changed plans'})[0],200)
+        ride=c.call('state')[1]['rides'][0]
+        self.assertEqual(ride['cancel_reason'],'Changed plans')
+        self.assertEqual([event['kind'] for event in ride['events']],['Request sent','Ride cancelled'])
     def test_login_logout_csrf_and_no_password_leak(self):
         c,email=self.account('customer');self.assertNotIn('password',c.call('state')[1]['user']);self.assertNotIn('salt',c.call('state')[1]['user'])
         self.assertEqual(c.call('logout',{},headers={'Origin':'https://evil.example'})[0],403)
@@ -114,7 +142,7 @@ class Workflow(unittest.TestCase):
 
     def test_offer_change_requires_new_customer_acceptance(self):
         c,_=self.account('customer');d,_=self.account('driver');rid=self.ride(c)
-        d.call('availability',{'online':True})
+        self.online(d)
         d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
         old=c.call('state')[1]['rides'][0]['offers'][0]
         d.call(f'rides/{rid}/offer',{'fare':900,'eta':8})
@@ -126,14 +154,14 @@ class Workflow(unittest.TestCase):
 
     def test_driver_logout_removes_availability(self):
         c,_=self.account('customer');d,_=self.account('driver');rid=self.ride(c)
-        d.call('availability',{'online':True});d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
+        self.online(d);d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
         offer=c.call('state')[1]['rides'][0]['offers'][0]
         d.call('logout',{})
         self.assertEqual(c.call(f'rides/{rid}/accept',{'offer_id':offer['id'],'offer_version':1})[0],409)
 
     def test_current_driver_trip_survives_busy_inbox(self):
         c,_=self.account('customer');d,_=self.account('driver');rid=self.ride(c)
-        d.call('availability',{'online':True});d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
+        self.online(d);d.call(f'rides/{rid}/offer',{'fare':100,'eta':3})
         offer=c.call('state')[1]['rides'][0]['offers'][0]
         self.assertEqual(c.call(f'rides/{rid}/accept',{'offer_id':offer['id'],'offer_version':1})[0],200)
         with server.connect() as db:
